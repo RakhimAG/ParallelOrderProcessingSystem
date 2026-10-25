@@ -45,17 +45,34 @@ class MySystem
                     {
                         while (IsRunning && Orders.TryDequeue(out var nextOrder))
                         {
-                            semaphoreSlim.WaitAsync();
+                            semaphoreSlim.Wait();
 
                             try
                             {
                                 ProcessOrder(nextOrder!);
                                 Interlocked.Increment(ref processedOrders);
-                                lock (locker)
+
+                                // manual locking version
+                                bool lockTaken = false;
+                                try
                                 {
-                                    TotalPrice += nextOrder.Price;
-                                    MySystem.LogResultAsync(writer, nextOrder);
+                                    Monitor.Enter(locker, ref lockTaken);
+
+                                    TotalPrice += nextOrder!.Price;
+                                    LogResult(writer, nextOrder);
                                 }
+                                finally
+                                {
+                                    if (lockTaken)
+                                        Monitor.Exit(locker);
+                                }
+
+                                // lock version
+                                //lock (locker)
+                                //{
+                                //    TotalPrice += nextOrder.Price;
+                                //    MySystem.LogResult(writer, nextOrder);
+                                //}
                             }
                             finally { semaphoreSlim.Release(); }
                         }
@@ -64,13 +81,13 @@ class MySystem
             );
     }
 
-    public static async void LogResultAsync(StreamWriter writer, Order order)
+    public static void LogResult(StreamWriter writer, Order order)
     {
         if (order is null)
             return;
 
 
-        await writer.WriteLineAsync(
+        writer.WriteLine(
             $"OrderID: {order.OrderID}, " +
             $"Price: {order.Price}, " +
             $"IsProcessed: {order.IsProcessed}");

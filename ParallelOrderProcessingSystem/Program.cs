@@ -3,7 +3,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 
 
-using var writer = new StreamWriter("results.txt", append: true);
+using var writer = new StreamWriter("results.txt", append: false);
 
 var system = new MySystem(writer);
 
